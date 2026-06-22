@@ -157,8 +157,6 @@ const LoaderIcon = () => /*#__PURE__*/React.createElement("svg", {
   strokeDasharray: "16",
   strokeDashoffset: "14"
 }));
-const AMADEUS_CLIENT_ID = 'JBifm02xS7GqjjyNghmzGzJE58odw5k3';
-const AMADEUS_CLIENT_SECRET = 'eLCFMh6mWXLWP33E';
 const API_URL_OFFERS = 'https://api.amadeus.com/v2/shopping/flight-offers';
 const API_URL_AVAILABILITY = 'https://api.amadeus.com/v1/shopping/availability/flight-availabilities';
 const TOKEN_URL = 'https://api.amadeus.com/v1/security/oauth2/token';
@@ -233,12 +231,33 @@ const App = () => {
   const [departureDate, setDepartureDate] = useState('2026-06-27');
   const [returnDate, setReturnDate] = useState(getReturnDate20Days('2026-06-27'));
   const [results, setResults] = useState([]);
-  const [hasSearched, setHasSearched] = useState(false); // Fix: prevent "No Results" on initial load
+  const [hasSearched, setHasSearched] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [adults, setAdults] = useState(1);
   const [carrierCode, setCarrierCode] = useState('');
   const [flightNumber, setFlightNumber] = useState('');
+
+  // Credentials — loaded from localStorage, never hardcoded
+  const [clientId, setClientId] = useState(() => localStorage.getItem('amadeus_client_id') || '');
+  const [clientSecret, setClientSecret] = useState(() => localStorage.getItem('amadeus_client_secret') || '');
+  const [showSettings, setShowSettings] = useState(false);
+  const [settingsId, setSettingsId] = useState('');
+  const [settingsSecret, setSettingsSecret] = useState('');
+
+  const openSettings = () => {
+    setSettingsId(clientId);
+    setSettingsSecret(clientSecret);
+    setShowSettings(true);
+  };
+  const saveSettings = () => {
+    localStorage.setItem('amadeus_client_id', settingsId);
+    localStorage.setItem('amadeus_client_secret', settingsSecret);
+    setClientId(settingsId);
+    setClientSecret(settingsSecret);
+    setShowSettings(false);
+  };
+
   const handleIATAChange = (e, setter) => {
     const input = e.target;
     let value = input.value;
@@ -252,10 +271,11 @@ const App = () => {
     });
   };
   const fetchToken = useCallback(async () => {
+    if (!clientId || !clientSecret) throw new Error('API credentials not set. Click the ⚙️ button to add your Amadeus Client ID and Secret.');
     const authPayload = new URLSearchParams();
     authPayload.append('grant_type', 'client_credentials');
-    authPayload.append('client_id', AMADEUS_CLIENT_ID);
-    authPayload.append('client_secret', AMADEUS_CLIENT_SECRET);
+    authPayload.append('client_id', clientId);
+    authPayload.append('client_secret', clientSecret);
     const tokenResponse = await fetch(TOKEN_URL, {
       method: 'POST',
       headers: {
@@ -268,7 +288,7 @@ const App = () => {
       return data.access_token;
     }
     throw new Error('Amadeus authentication token failed to generate.');
-  }, []);
+  }, [clientId, clientSecret]);
   const searchFlights = useCallback(async e => {
     if (e) e.preventDefault();
     setError('');
@@ -415,13 +435,54 @@ const App = () => {
     className: "min-h-screen bg-gray-50 p-4 md:p-8 flex justify-center"
   }, /*#__PURE__*/React.createElement("div", {
     className: "w-full max-w-lg"
-  }, /*#__PURE__*/React.createElement("header", {
-    className: "py-4 mb-6"
+  },
+  /* Settings Modal */
+  showSettings && /*#__PURE__*/React.createElement("div", {
+    className: "fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm"
+  }, /*#__PURE__*/React.createElement("h2", {
+    className: "text-lg font-bold text-gray-900 mb-1"
+  }, "API Credentials"), /*#__PURE__*/React.createElement("p", {
+    className: "text-xs text-gray-500 mb-4"
+  }, "Saved to your browser only — never sent anywhere except Amadeus."), /*#__PURE__*/React.createElement("div", {
+    className: "space-y-3"
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
+    className: "text-xs font-semibold text-gray-500"
+  }, "Client ID"), /*#__PURE__*/React.createElement("input", {
+    type: "text",
+    value: settingsId,
+    onChange: e => setSettingsId(e.target.value),
+    placeholder: "Amadeus Client ID",
+    className: "w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-indigo-500 focus:border-indigo-500"
+  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
+    className: "text-xs font-semibold text-gray-500"
+  }, "Client Secret"), /*#__PURE__*/React.createElement("input", {
+    type: "password",
+    value: settingsSecret,
+    onChange: e => setSettingsSecret(e.target.value),
+    placeholder: "Amadeus Client Secret",
+    className: "w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-indigo-500 focus:border-indigo-500"
+  }))), /*#__PURE__*/React.createElement("div", {
+    className: "flex gap-2 mt-5"
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: () => setShowSettings(false),
+    className: "flex-1 py-2 rounded-xl border border-gray-300 text-gray-600 text-sm font-semibold hover:bg-gray-50"
+  }, "Cancel"), /*#__PURE__*/React.createElement("button", {
+    onClick: saveSettings,
+    className: "flex-1 py-2 rounded-xl bg-indigo-600 text-white text-sm font-bold hover:bg-indigo-700"
+  }, "Save")))),
+  /*#__PURE__*/React.createElement("header", {
+    className: "py-4 mb-6 relative"
   }, /*#__PURE__*/React.createElement("h1", {
     className: "text-3xl font-extrabold text-gray-900 text-center tracking-tight"
   }, "Amadeus Flight Tools"), /*#__PURE__*/React.createElement("p", {
     className: "text-sm text-gray-500 text-center mt-1"
-  }, activeTab === 'offers' ? 'Search for best flight offers.' : 'Check specific flight seat availability.')), /*#__PURE__*/React.createElement("div", {
+  }, activeTab === 'offers' ? 'Search for best flight offers.' : 'Check specific flight seat availability.'), /*#__PURE__*/React.createElement("button", {
+    onClick: openSettings,
+    title: "API Credentials",
+    className: `absolute right-0 top-5 p-2 rounded-full text-lg transition-colors ${clientId ? 'text-green-500 hover:bg-green-50' : 'text-red-400 hover:bg-red-50 animate-pulse'}`
+  }, "⚙️")), /*#__PURE__*/React.createElement("div", {
     className: "flex justify-around bg-white p-2 rounded-2xl shadow-xl mb-6 border border-gray-200"
   }, /*#__PURE__*/React.createElement("button", {
     onClick: () => {
