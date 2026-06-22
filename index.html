@@ -370,19 +370,6 @@ const App = () => {
         },
         body: JSON.stringify(requestBody)
       });
-      if (response.status === 400) {
-        const errorJson = await response.json();
-        const firstError = errorJson.errors?.[0] || {};
-        const errorCode = firstError.code;
-        const errorTitle = (firstError.title || "").toUpperCase();
-        const errorDetail = (firstError.detail || "").toUpperCase();
-        const isNoFlights = errorCode === 32111 || errorTitle.includes("NO QUERY") || errorTitle.includes("SEGMENT") || errorDetail.includes("NO FLIGHT") || errorDetail.includes("NO PLAY");
-        if (isNoFlights) {
-          setResults([]);
-          setIsLoading(false);
-          return;
-        }
-      }
       if (response.ok) {
         const data = await response.json();
         const offers = data.data || [];
@@ -404,9 +391,19 @@ const App = () => {
         const finalResults = isFiltered ? filterUniqueFlightsByMaxSeats(formattedResults) : formattedResults;
         setResults(finalResults);
       } else {
-        const errorJson = await response.json();
-        const detail = errorJson.errors?.[0]?.detail || response.statusText;
-        throw new Error(`Amadeus rejected search: ${detail}`);
+        // Parse body once — avoids double-read bug
+        const errorJson = await response.json().catch(() => ({}));
+        const firstError = errorJson.errors?.[0] || {};
+        const errorCode = firstError.code;
+        const errorTitle = (firstError.title || "").toUpperCase();
+        const errorDetail = (firstError.detail || "").toUpperCase();
+        const isNoFlights = errorCode === 32111 || errorTitle.includes("NO QUERY") || errorTitle.includes("SEGMENT") || errorDetail.includes("NO FLIGHT") || errorDetail.includes("NO PLAY");
+        if (isNoFlights) {
+          setResults([]);
+          return;
+        }
+        const detail = firstError.detail || firstError.title || response.statusText;
+        throw new Error(`HTTP ${response.status}: ${detail} (code: ${errorCode || 'N/A'})`);
       }
     } catch (err) {
       setError(err.message);
