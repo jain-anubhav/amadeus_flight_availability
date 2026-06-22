@@ -357,11 +357,7 @@ const App = () => {
     setHasSearched(true);
     try {
       const token = await fetchToken();
-      const flightFilters = {
-        "connectionRestriction": {
-          "maxNumberOfConnections": 0
-        }
-      };
+      const flightFilters = {};
       if (carrierCode) flightFilters.carrierCode = [carrierCode];
       if (flightNumber) flightFilters.flightNumber = flightNumber;
       const requestBody = {
